@@ -29,11 +29,11 @@ contract FlightSuretyData {
 
     // data structure to determine insurance
     struct Insurance {
-        address insureeAccount; // account address of insuree
-        uint256 amount;                 // insurance amount
-        address airlineAccount;         // account address of airline
-        string airlineName;             // name of airline
-        uint256 timestamp;              // timestamp of airline
+        address insureeAccount;
+        uint256 amount;
+        address airlineAccount;
+        string flightName;
+        uint256 timestamp;
     }
     // mapping to store insurances data
     mapping(bytes32 => Insurance[]) private insurances;
@@ -48,9 +48,37 @@ contract FlightSuretyData {
 
     event AirlineRegistered(
         address indexed airlineAccount, // account address of airline
-        string airlineName // name of airline
+        string  airlineName             // name of airline
     );
 
+    event AirlineFunded(
+        address indexed airlineAccount, // account address of airline
+        uint256 amount                  // amount funded to airline
+    );
+
+    event InsurancePurchased(
+        address indexed insureeAccount, // account address of insuree
+        uint256 amount,                 // insurance amount
+        address airlineAccount,         // account address of airline
+        string  flightName,            // name of airline
+        uint256 timestamp               // timestamp of airline
+    );
+
+    event InsuranceCreditAvailable(
+        address indexed airlineAccount, // account address of airline
+        string  indexed airlineName,    // name of airline
+        uint256 indexed timestamp       // timestamp of airline
+    );
+
+    event InsuranceCredited(
+        address indexed insureeAccount, // account address of insuree
+        uint256 amount                  // insurance amount
+    );
+
+    event InsurancePaid(
+        address indexed insureeAccount, // account address of insuree
+        uint256 amount                  // insurance amount
+    );
 
     /**
     * @dev Constructor
@@ -100,6 +128,16 @@ contract FlightSuretyData {
         _;
     }
 
+    modifier hasMsgData() {
+        require(msg.data.length > 0, "Message data is empty");
+        _;
+    }
+
+    modifier is_airline() {
+        require(airlines[msg.sender].isRegistered, "Caller not Airline");
+        _;
+    }
+
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
@@ -138,6 +176,47 @@ contract FlightSuretyData {
      */
     function authorizeCaller(address contractAddress) external requireContractOwner {
         authorizedCallers[contractAddress] = true;
+    }
+
+    function getFlightKey(
+        address airline,
+        string flight,
+        uint256 timestamp
+    )
+    internal
+    pure
+    returns(bytes32) {
+        return keccak256(abi.encodePacked(airline, flight, timestamp));
+    }
+
+    function getAirlinesCount()
+        external
+        view
+        returns(uint256)
+    {
+        return airlinesCount;
+    }
+
+    function isAirline
+        (
+            address airlineAccount
+        )
+        external
+        view
+        returns(bool)
+    {
+        return airlines[airlineAccount].isRegistered;
+    }
+
+    function isAirlineFunded
+        (
+            address airlineAccount
+        )
+        external
+        view
+        returns(bool)
+    {
+        return airlines[airlineAccount].isRegistered;
     }
 
     /********************************************************************************************/
@@ -182,23 +261,59 @@ contract FlightSuretyData {
     *
     */
     function buy
-                            (
-                            )
-                            external
-                            payable
+        (
+            address _insureeAccount,
+            address _airlineAccount,
+            string  _flightName,
+            uint256 _timestamp
+        )
+        external
+        payable
     {
-        
+        bytes32 flightKey = getFlightKey(_airlineAccount, _flightName, _timestamp);
+        airlines[_airlineAccount].fund = airlines[_airlineAccount].fund.add(msg.value);
+        insurances[flightKey].push(
+            Insurance(
+                _insureeAccount,
+                msg.value,
+                _airlineAccount,
+                _flightName,
+                _timestamp
+            )
+        );
+        emit InsurancePurchased(
+            _insureeAccount,
+            msg.value,
+            _airlineAccount,
+            _flightName,
+            _timestamp
+        );
     }
 
     /**
      *  @dev Credits payouts to insurees
     */
     function creditInsurees
-                                (
-                                )
-                                external
-                                pure
+        (
+            uint256 _creditPercentage,
+            address _airlineAccount,
+            string  _flightName,
+            uint256 _timestamp
+        )
+        external
+        isAuthorizedCaller
     {
+        bytes32 flightKey = getFlightKey(_airlineAccount, _flightName, _timestamp);
+        require(!payoutCredited[flightKey], "Insurance payout have already been credited");
+        for (uint i = 0; i < insurances[flightKey].length; i++) {
+            address insureeAccount = insurances[flightKey][i].insureeAccount;
+            uint256 amountToReceive = insurances[flightKey][i].amount.mul(_creditPercentage).div(100);
+            creditPayoutsToInsuree[insureeAccount] = creditPayoutsToInsuree[insureeAccount].add(amountToReceive);
+            airlines[_airlineAccount].fund = airlines[_airlineAccount].fund.sub(amountToReceive);
+            emit InsuranceCredited(insureeAccount, amountToReceive);
+        }
+        payoutCredited[flightKey] = true;
+        emit InsuranceCreditAvailable(_airlineAccount, _flightName, _timestamp);
     }
 
 
@@ -207,11 +322,16 @@ contract FlightSuretyData {
      *
     */
     function pay
-                            (
-                            )
-                            external
-                            pure
+        (
+            address _insureeAccount
+        )
+        external
+        isAuthorizedCaller
     {
+        uint256 payableAmount = creditPayoutsToInsuree[_insureeAccount];
+        delete(creditPayoutsToInsuree[_insureeAccount]);
+        _insureeAccount.transfer(payableAmount);
+        emit InsurancePaid(_insureeAccount, payableAmount);
     }
 
    /**
@@ -220,35 +340,39 @@ contract FlightSuretyData {
     *
     */
     function fund
-                            (
-                            )
-                            public
-                            payable
+        (
+            address _airlineAccount
+        )
+        public
+        payable
+        isAuthorizedCaller
     {
+        addFund(_airlineAccount, msg.value);
+        airlines[_airlineAccount].isFunded = true;
+        emit AirlineFunded(_airlineAccount, msg.value);
     }
 
-    function getFlightKey
-                        (
-                            address airline,
-                            string memory flight,
-                            uint256 timestamp
-                        )
-                        internal
-                        pure
-                        returns(bytes32)
-    {
-        return keccak256(abi.encodePacked(airline, flight, timestamp));
+    function addFund(
+        address _airlineAccount,
+        uint256 _fundValue
+    )
+    private {
+        airlines[_airlineAccount].fund = airlines[_airlineAccount].fund.add(_fundValue);
     }
 
     /**
     * @dev Fallback function for funding smart contract.
     *
     */
-    function()
-                            external
-                            payable
+    function ()
+        external
+        payable
+        hasMsgData
+        is_airline
     {
-        fund();
+        addFund(msg.sender, msg.value);
+        airlines[msg.sender].isFunded = true;
+        emit AirlineFunded(msg.sender, msg.value);
     }
 
 

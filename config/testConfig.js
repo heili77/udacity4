@@ -23,9 +23,10 @@ var Config = async function(accounts) {
     let owner = accounts[0];
     let firstAirline = accounts[1];
 
-    let flightSuretyData = await FlightSuretyData.new();
-    let flightSuretyApp = await FlightSuretyApp.new();
+    let flightSuretyData = await FlightSuretyData.new(firstAirline, "AIR", {from: owner});
+    let flightSuretyApp = await FlightSuretyApp.new(flightSuretyData.address);
 
+    let flight = "flight1";
     
     return {
         owner: owner,
@@ -33,7 +34,9 @@ var Config = async function(accounts) {
         weiMultiple: (new BigNumber(10)).pow(18),
         testAddresses: testAddresses,
         flightSuretyData: flightSuretyData,
-        flightSuretyApp: flightSuretyApp
+        flightSuretyApp: flightSuretyApp,
+        flightName: flight,
+        flightTime: Math.trunc(((new Date()).getTime() + 3 * 3600) / 1000)
     }
 }
 

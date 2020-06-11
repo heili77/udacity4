@@ -25,11 +25,13 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
 
     uint256 private constant AIRLINES_THRESHOLD = 4;
-
+    uint256 public constant INSURANCE_RETURN_PERCENTAGE = 150;
+    
     address private contractOwner;          // Account used to deploy contract
 
     struct Flight {
         bool isRegistered;
+        string flight;
         uint8 statusCode;
         uint256 updatedTimestamp;
         address airline;
@@ -54,6 +56,10 @@ contract FlightSuretyApp {
         uint256 votes
     );
 
+    event Voted(
+        address airline,
+        uint256 votes
+    );
 
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
@@ -77,7 +83,7 @@ contract FlightSuretyApp {
     /**
     * @dev Modifier that requires the "ContractOwner" account to be the function caller
     */
-    modifier requireContractOwner()
+    modifier isContractOwner()
     {
         require(msg.sender == contractOwner, "Caller is not contract owner");
         _;
@@ -99,13 +105,16 @@ contract FlightSuretyApp {
         _;
     }
 
-    /**
-     * @dev Modifier that requires a timestamp to be in the future
-     */
     modifier isFutureFlight(uint256 _timestamp) {
         require(_timestamp > block.timestamp, "Flight is not in future");
         _;
     }
+
+   // modifier isMinimumFunded()
+   // {
+  //      require(flightSuretyData.)
+ //       _;
+ //   }
 
     /********************************************************************************************/
     /*                                       CONSTRUCTOR                                        */
@@ -143,16 +152,18 @@ contract FlightSuretyApp {
             //address _callerAirlineAccount
         )
         internal
+        isAirline()
     {
         require(votersMap[_airlineAccount][msg.sender] == false, "already voted");
         votersMap[_airlineAccount][msg.sender] = true;
         votesMap[_airlineAccount] = votesMap[_airlineAccount].add(1);
+        emit Voted(_airlineAccount, votesMap[_airlineAccount]);
     }
 
     function getFlightKey
         (
             address airline,
-            string memory flight,
+            string flight,
             uint256 timestamp
         )
         internal
@@ -207,7 +218,7 @@ contract FlightSuretyApp {
     */
     function registerFlight
         (
-            string  _airlineName,
+            string  _flightname,
             uint256 _timestamp
         )
         external
@@ -216,14 +227,26 @@ contract FlightSuretyApp {
         isAirlineFunded
         isFutureFlight(_timestamp)
     {
-        bytes32 flightKey = getFlightKey(msg.sender, _airlineName, _timestamp);
+        bytes32 flightKey = getFlightKey(msg.sender, _flightname, _timestamp);
         flights[flightKey] = Flight(
             true,
+            _flightname,
             STATUS_CODE_UNKNOWN,
             _timestamp,
             msg.sender
         );
-        emit FlightRegistered(msg.sender, _airlineName, _timestamp);
+        emit FlightRegistered(msg.sender, _flightname, _timestamp);
+    }
+
+    function fund()
+        external
+        payable
+        isOperational
+        isAirline
+    {
+        flightSuretyData
+            .fund
+            .value(msg.value)(msg.sender);
     }
 
    /**
@@ -233,7 +256,7 @@ contract FlightSuretyApp {
     function processFlightStatus
         (
             address airline,
-            string memory flight,
+            string flight,
             uint256 timestamp,
             uint8 statusCode
         )
@@ -267,6 +290,47 @@ contract FlightSuretyApp {
         emit OracleRequest(index, airline, flight, timestamp);
     }
 
+    function buyInsurance
+        (
+            address _airlineAccount,
+            string  _flight,
+            uint256 _timestamp
+        )
+        external
+        payable
+        isOperational
+    {
+        require(!flightSuretyData.isAirline(msg.sender), "Caller is airline itself");
+        require(block.timestamp < _timestamp, "Insurance is not before flight timestamp");
+        require(msg.value <= 1, "Value sent by caller is above insurance cost");
+        bytes32 flightKey = getFlightKey(_airlineAccount, _flight, _timestamp);
+        require(flights[flightKey].isRegistered == true, "Flight is not registered");
+        flightSuretyData
+            .buy
+            .value(msg.value)(
+                msg.sender,
+                _airlineAccount,
+                _flight,
+                _timestamp
+            );
+    }
+
+    function claimCredit(
+        address _airlineAccount,
+        string  _flight,
+        uint256 _timestamp
+    ) external
+    isOperational {
+        bytes32 flightKey = getFlightKey(_airlineAccount, _flight, _timestamp);
+        require(flights[flightKey].statusCode == STATUS_CODE_LATE_AIRLINE, "Flight status is not late");
+        require(block.timestamp > flights[flightKey].updatedTimestamp, "Claim not allowed yet");
+        flightSuretyData.creditInsurees(
+            INSURANCE_RETURN_PERCENTAGE,
+            _airlineAccount,
+            _flight,
+            _timestamp
+        );
+    }
 
 // region ORACLE MANAGEMENT
 
@@ -366,7 +430,7 @@ contract FlightSuretyApp {
 
 
         bytes32 key = keccak256(abi.encodePacked(index, airline, flight, timestamp));
-        require(oracleResponses[key].isOpen, "Flight or timestamp do not match oracle request");
+        require(oracleResponses[key].isOpen, "\nFlight or timestamp do not match oracle request");
 
         oracleResponses[key].responses[statusCode].push(msg.sender);
 
