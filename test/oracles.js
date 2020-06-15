@@ -29,7 +29,7 @@ contract('Oracles', async (accounts) => {
     for(let a=1; a<TEST_ORACLES_COUNT; a++) {      
       await config.flightSuretyApp.registerOracle({ from: accounts[a], value: fee });
       let result = await config.flightSuretyApp.getMyIndexes.call({from: accounts[a]});
-      console.log(`Oracle Registered: ${result[0]}, ${result[1]}, ${result[2]}`);
+      console.log(`${a}: Oracle Registered: ${result[0]}, ${result[1]}, ${result[2]}`);
     }
   });
 
@@ -60,7 +60,8 @@ contract('Oracles', async (accounts) => {
         }
         catch(e) {
           // Enable this when debugging
-           console.log('Error', idx, oracleIndexes[idx].toNumber(), flight, timestamp);
+          console.log(e)
+          console.log('Error', idx, oracleIndexes[idx].toNumber(), flight, timestamp);
         }
 
       }
@@ -94,7 +95,8 @@ contract('Oracles', async (accounts) => {
         }
         catch(e) {
           // Enable this when debugging
-           console.log('Error', idx, oracleIndexes[idx].toNumber(), flight, timestamp);
+          console.log(e)
+          console.log('Error', idx, oracleIndexes[idx].toNumber(), flight, timestamp);
         }
 
       }
