@@ -8,7 +8,7 @@ contract('Oracles', async (accounts) => {
   var config;
   before('setup contract', async () => {
     config = await Test.Config(accounts);
-
+    await config.flightSuretyData.authorizeCaller(config.flightSuretyApp.address);
     // Watch contract events
     
   });
@@ -19,6 +19,37 @@ contract('Oracles', async (accounts) => {
   const STATUS_CODE_LATE_TECHNICAL = 40;
   const STATUS_CODE_LATE_OTHER = 50;
 
+  it('(airline) register flight', async () => {
+        
+    // ARRANGE
+    await config.flightSuretyApp.fund({from: config.firstAirline, value: web3.utils.toWei("3", "ether")});
+    // ACT
+    await config.flightSuretyApp.registerFlight("flight1", config.flightTime, {from: config.firstAirline  });
+ 
+    //await config.flightSuretyApp.addVote(newAirline4, {from: config.newAirline3 });
+   
+    //let result = await config.flightSuretyData.isAirline.call(newAirline4);
+
+    // ASSERT
+    //assert.equal(result, true, "Airline should be registered (voting)");
+
+});
+
+  it('(passenger) buyInsurance', async () => {
+        
+    let passengerAccount = accounts[6];
+    let cost = web3.utils.toWei("0.5", "ether");
+    // ACT
+    await config.flightSuretyApp.buyInsurance(config.firstAirline, "flight1", config.flightTime, {from: passengerAccount, value: cost });
+ 
+    //await config.flightSuretyApp.addVote(newAirline4, {from: config.newAirline3 });
+   
+    //let result = await config.flightSuretyData.isAirline.call(newAirline4);
+
+    // ASSERT
+    //assert.equal(result, true, "Airline should be registered (voting)");
+
+});
 
   it('can register oracles', async () => {
     
@@ -101,7 +132,7 @@ contract('Oracles', async (accounts) => {
         }
         catch(e) {
           // Enable this when debugging
-          console.log(e)
+          //console.log(e)
           console.log('Error', idx, oracleIndexes[idx].toNumber(), flight, config.flightTime);
         }
 
@@ -117,10 +148,15 @@ contract('Oracles', async (accounts) => {
 
   it(`(passenger) claim credit`, async function () {
 
-    
-    // Get operating status
-    let status = await config.flightSuretyApp.claimCredit(config.firstAirline, "flight1", config.flightTime);
-    assert.equal(status, true, "Incorrect initial operating status value");
+    await config.flightSuretyApp.claimCredit(config.firstAirline, "flight1", config.flightTime, {from: accounts[6]});
+    //assert.equal(status, true, "Incorrect initial operating status value");
+
+  });
+
+  it(`(passenger) withdraw`, async function () {
+
+    await config.flightSuretyApp.withdrawCredits({from: accounts[6] });
+    //assert.equal(status, true, "Incorrect initial operating status value");
 
   });
  

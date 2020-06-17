@@ -240,33 +240,7 @@ contract('Flight Surety Tests', async (accounts) => {
 
     });
 
-    it('(airline) register flight', async () => {
-        
-        // ARRANGE
-        
-        // ACT
-        await config.flightSuretyApp.registerFlight("flight1", config.flightTime, {from: config.firstAirline  });
-     
-        //await config.flightSuretyApp.addVote(newAirline4, {from: config.newAirline3 });
-       
-        //let result = await config.flightSuretyData.isAirline.call(newAirline4);
     
-        // ASSERT
-        //assert.equal(result, true, "Airline should be registered (voting)");
 
-    });
-
-    it('(passenger) buyInsurance', async () => {
-        
-        // ACT
-        await config.flightSuretyApp.buyInsurance(config.firstAirline, "flight1", config.flightTime, {from: accounts[6]  });
-     
-        //await config.flightSuretyApp.addVote(newAirline4, {from: config.newAirline3 });
-       
-        //let result = await config.flightSuretyData.isAirline.call(newAirline4);
     
-        // ASSERT
-        //assert.equal(result, true, "Airline should be registered (voting)");
-
-    });
 });

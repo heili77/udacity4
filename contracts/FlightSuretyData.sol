@@ -66,7 +66,7 @@ contract FlightSuretyData {
 
     event InsuranceCreditAvailable(
         address indexed airlineAccount, // account address of airline
-        string  indexed airlineName,    // name of airline
+        string  indexed flight,    // name of airline
         uint256 indexed timestamp       // timestamp of airline
     );
 
@@ -358,6 +358,16 @@ contract FlightSuretyData {
     )
     private {
         airlines[_airlineAccount].fund = airlines[_airlineAccount].fund.add(_fundValue);
+    }
+
+    function getInsureePayoutCredits
+        (
+            address _insureeAccount
+        ) external
+        view
+        returns(uint256 amount)
+    {
+        return creditPayoutsToInsuree[_insureeAccount];
     }
 
     /**

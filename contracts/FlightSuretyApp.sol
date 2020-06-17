@@ -302,7 +302,8 @@ contract FlightSuretyApp {
     {
         require(!flightSuretyData.isAirline(msg.sender), "Caller is airline itself");
         require(block.timestamp < _timestamp, "Insurance is not before flight timestamp");
-        require(msg.value <= 1, "Value sent by caller is above insurance cost");
+        require(msg.value <= 1 ether, "Value sent by caller is above insurance cost");
+        require(msg.value != 0, "invalid value");
         bytes32 flightKey = getFlightKey(_airlineAccount, _flight, _timestamp);
         require(flights[flightKey].isRegistered == true, "Flight is not registered");
         flightSuretyData
@@ -323,13 +324,20 @@ contract FlightSuretyApp {
     isOperational {
         bytes32 flightKey = getFlightKey(_airlineAccount, _flight, _timestamp);
         require(flights[flightKey].statusCode == STATUS_CODE_LATE_AIRLINE, "Flight status is not late");
-        require(block.timestamp > flights[flightKey].updatedTimestamp, "Claim not allowed yet");
+        //require(block.timestamp > flights[flightKey].updatedTimestamp, "Claim not allowed yet");
         flightSuretyData.creditInsurees(
             INSURANCE_RETURN_PERCENTAGE,
             _airlineAccount,
             _flight,
             _timestamp
         );
+    }
+
+    function withdrawCredits()
+    external
+    isOperational {
+        require(flightSuretyData.getInsureePayoutCredits(msg.sender) > 0, "No credits available");
+        flightSuretyData.pay(msg.sender);
     }
 
 // region ORACLE MANAGEMENT
