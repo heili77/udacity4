@@ -16,7 +16,6 @@ export default class Contract {
 
     initialize(callback) {
         this.web3.eth.getAccounts((error, accts) => {
-           
             this.owner = accts[0];
 
             let counter = 1;
@@ -36,7 +35,7 @@ export default class Contract {
     isOperational(callback) {
        let self = this;
        self.flightSuretyApp.methods
-            .isOperational()
+            .is_operational()
             .call({ from: self.owner}, callback);
     }
 
