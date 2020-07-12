@@ -1,3 +1,5 @@
+var Web3 = require('web3');
+
 const FlightSuretyApp = artifacts.require("FlightSuretyApp");
 const FlightSuretyData = artifacts.require("FlightSuretyData");
 const fs = require('fs');
@@ -5,10 +7,11 @@ const fs = require('fs');
 module.exports = function(deployer) {
 
     let firstAirline = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';
+    let owner = '0x627306090abaB3A6e1400e9345bC60c78a8BEf57';
     deployer.deploy(FlightSuretyData, firstAirline, "AIR")
     .then(() => {
         return deployer.deploy(FlightSuretyApp, FlightSuretyData.address)
-                .then(() => {
+                .then( async() => {
                     let config = {
                         localhost: {
                             url: 'http://localhost:7545',
@@ -16,8 +19,14 @@ module.exports = function(deployer) {
                             appAddress: FlightSuretyApp.address
                         }
                     }
-                    fs.writeFileSync(__dirname + '/../src/dapp/config.json',JSON.stringify(config, null, '\t'), 'utf-8');
-                    fs.writeFileSync(__dirname + '/../src/server/config.json',JSON.stringify(config, null, '\t'), 'utf-8');
+                    await fs.writeFileSync(__dirname + '/../src/dapp/config.json',JSON.stringify(config, null, '\t'), 'utf-8');
+                    await fs.writeFileSync(__dirname + '/../src/server/config.json',JSON.stringify(config, null, '\t'), 'utf-8');
+
+                    accounts = await web3.eth.getAccounts();
+                    let flightSuretyData = await FlightSuretyData.new(firstAirline, "AIR");
+                    //let flightSuretyApp = await  FlightSuretyApp.new(FlightSuretyData.address);
+
+                    flightSuretyData.authorizeCaller(FlightSuretyApp.address);                    
                 });
     });
 }
