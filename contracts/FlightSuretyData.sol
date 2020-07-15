@@ -80,6 +80,10 @@ contract FlightSuretyData {
         uint256 amount                  // insurance amount
     );
 
+    event CallerAuthorized(
+        address Caller
+    );
+
     /**
     * @dev Constructor
     *      The deploying account becomes contractOwner
@@ -176,6 +180,7 @@ contract FlightSuretyData {
      */
     function authorizeCaller(address contractAddress) external requireContractOwner {
         authorizedCallers[contractAddress] = true;
+        emit CallerAuthorized(contractAddress);
     }
 
     function getFlightKey(

@@ -146,6 +146,14 @@ contract FlightSuretyApp {
         return flightSuretyData.isOperational();  // Modify to call data contract's status
     }
 
+    function is_airline(address airline)
+        public
+        view
+        returns(bool)
+    {
+        return flightSuretyData.isAirline(airline);  // Modify to call data contract's status
+    }
+
     function addVote
         (
             address _airlineAccount
